@@ -1,6 +1,6 @@
 #!/bin/bash +x
 # Unnatended Archlinux Installer - by Sebastian Sanchez Baldoncini
-
+#
 # Store system options and errors
 SYSSEL=/tmp/systemsettings.sh.$$
 SYSERR=/tmp/systemerrors.sh.$$
