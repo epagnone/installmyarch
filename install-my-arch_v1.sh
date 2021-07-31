@@ -14,8 +14,8 @@ PARTS=/tmp/parts.sh.$$
 LAYOUTS=/tmp/layouts.sh.$$
 
 # Get absolute paths for config files
-COM=$(echo $0 | sed 's/install_my_arch.sh/com-packages.cfg/')
-AUR=$(echo $0 | sed 's/install_my_arch.sh/aur-packages.cfg/')
+COM=$(echo $0 | sed 's/install-my-arch_v1.sh/com-packages.cfg/')
+AUR=$(echo $0 | sed 's/install-my-arch_v1.sh/aur-packages.cfg/')
 
 # trap and delete temp files
 trap "rm $OUTPUT; rm $PARTS; rm $LAYOUTS; rm $INPUT; rm $SYSSEL; rm SYSERR; exit" SIGHUP SIGINT SIGTERM
@@ -507,7 +507,7 @@ $CHR "$INSTALL zsh zsh-completions"
 $CHR "chsh -s /bin/zsh"
 
 text g "\n[+] Enable multilib repo\n"
-$CHR "sed -i '92,93 s/# *//' /etc/pacman.conf"
+$CHR "sed -i '93,94 s/# *//' /etc/pacman.conf"
 
 text g "\n[+] Updating Pacman bases\n"
 $CHR "pacman -Sy"
