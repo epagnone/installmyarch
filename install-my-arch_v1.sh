@@ -21,7 +21,7 @@ AUR=$(echo $0 | sed 's/install-my-arch_v1.sh/aur-packages.cfg/')
 trap "rm $OUTPUT; rm $PARTS; rm $LAYOUTS; rm $INPUT; rm $SYSSEL; rm SYSERR; exit" SIGHUP SIGINT SIGTERM
 
 # Main packages packages
-BASE="base base-devel linux linux-firmware lvm2 man man-pages"
+BASE="base base-devel linux linux-firmware lvm2 man man-pages git"
 XORG="xorg-server xorg-xinit xorg-server-common"
 # Drivers by installation profile
 DVRVMWARE="xf86-video-vmware xf86-input-vmmouse open-vm-tools"
