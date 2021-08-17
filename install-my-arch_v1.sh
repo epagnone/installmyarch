@@ -463,11 +463,12 @@ if [[ -n $USR1 ]]; then
     mkfs.ext4 -F /dev/mapper/$VGN-$LVHOME
   else
     text g "\n[+] Formating detected volume $VGN-$LVHOME\n"
-    mkfs.ext4 -F /dev/mapper/$VGN-$LVHOME
+    mkfs.ext4 -F /dev/mapper/$VGN-$LVHOME 
   fi
  else
   text g "\n[+] Formating home partition $HDISP\n"
   mkfs.ext4 -F /dev/$HDISP
+ fi
 fi
 
 #------------------[ CHECK DIRS AND MOUNT ]---------------------
