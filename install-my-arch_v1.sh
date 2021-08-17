@@ -480,7 +480,7 @@ autodetect makedirs "$RPOINT" "Root"
 if [ $USELVM = "Yes" ]; then
  autodetect mountvols "$VGN-$LVROOT" "$RPOINT" "Root"
 else
- autodetect mountvols "$RDISP" "$RPOINT" "Root"
+ autodetect mountothers "$RDISP" "$RPOINT" "Root"
 fi
 autodetect makedirs "$BPOINT" "Boot"
 autodetect mountothers "$BDISP" "$BPOINT" "Boot"
@@ -492,7 +492,7 @@ if [[ -n $USR1 ]]; then
  if [ $USELVM = "Yes" ]; then
   autodetect mountvols "$VGN-$LVHOME" "$HPOINT" "home"
  else
-  autodetect mountvols "$HDISP" "$HPOINT" "home"
+  autodetect mountothers "$HDISP" "$HPOINT" "home"
  fi
 fi
 
