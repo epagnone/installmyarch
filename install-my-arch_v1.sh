@@ -209,6 +209,8 @@ autodetect efi
 ESIZE=$(autodetect size_show $EDISP)
 
 # My Default Settings
+RDISP=""
+HDISP=""
 RPOINT="/mnt"
 BPOINT="$RPOINT/boot"
 EPOINT="$RPOINT/boot/efi"
@@ -218,6 +220,7 @@ HPOINT="$RPOINT/home"
 MPOINT="/run/ssd"
 EFIFLAG="No"
 IMPFLAG="No"
+USELVM="No"
 
 # System Settings Pool
 declare -i g=0
@@ -230,11 +233,11 @@ while [[ $g = 0 ]]; do
   " [*] Flag" "Install Profile:\Z4$TYPEFLAG\Zn | Format EFI:\Z4$EFIFLAG\Zn" \
   " [*] Boot" "Partition:\Z4$BDISP\Zn | Mount:\Z4$BPOINT\Zn" \
   " [*] Efi" "Partition:\Z4$EDISP\Zn | Mount:\Z4$EPOINT\Zn" \
-  " [*] Lvm" "Partition:\Z4$PV\Zn | Group:\Z4$VGN\Zn | Size:\Z4$PVSIZE\Zn" \
-  " [*] Root" "Root Volume:\Z4$LVROOT\Zn | Size:\Z4$RSIZE\Zn | Mount:\Z4$RPOINT\Zn" \
+  " [*] Lvm" "Use LVM:\Z4$USELVM\Zn Partition:\Z4$PV\Zn | Group:\Z4$VGN\Zn | Size:\Z4$PVSIZE\Zn" \
+  " [*] Root" "Part:\Z4$RDISP\Zn Volume:\Z4$LVROOT\Zn | Size:\Z4$RSIZE\Zn | Mount:\Z4$RPOINT\Zn" \
   " [*] Pass" "Root User Password:\Z4$PASSFLAG\Zn" \
   " [ ] User" "Username:\Z4$USR1\Zn | Password:\Z4$PASS1FLAG\Zn" \
-  " [ ] Home" "Home Volume:\Z4$LVHOME\Zn | Size:\Z4$HSIZE\Zn | Mount:\Z4$HPOINT\Zn" \
+  " [ ] Home" "Part:\Z4$HDISP\Zn Volume:\Z4$LVHOME\Zn | Size:\Z4$HSIZE\Zn | Mount:\Z4$HPOINT\Zn" \
   " [ ] Host" "Hostname:\Z4$HOST\Zn" \
   " [ ] Ntfs" "Data Partition:\Z4$MDISP\Zn | Size:\Z4$MSIZE\Zn | Mount:\Z4$MPOINT\Zn" \
   " [!] DONE" "\Zb\Z6NEXT STEP\Zn" \
@@ -275,31 +278,45 @@ while [[ $g = 0 ]]; do
     ;;
     " [*] Lvm")
     autodetect parts >$PARTS
+    USELVM=$(dialog --colors --clear --backtitle "" \
+    --title "\Z7[ LOGICAL VOLUMES ]\Zn" \
+    --yesno "\n Gonna use LVM?" 7 65 \
+    3>&1 1>&2 2>&3 3>&- \
+    )
+    [[ $? = 0 ]] && USELVM="Yes"
+    [[ $? = 1 ]] && USELVM="No"
+    if [ $USELVM = "Yes" ]; then
     PV=$(display radio "SELECT LVM DEVICE")
     PVSIZE=$(autodetect size_show $PV)
     VGN=$(display input "ENTER VOLUME GROUP NAME" "$VGN")
+    fi
     ;;
     " [*] Root")
-    if [[ -n $VGN ]]; then
-      if [[ $(lvs) ]]; then
-        autodetect vols >$PARTS
-        LVROOT=$(display radio "SELECT ROOT VOLUME")
-        if [[ -n $LVROOT ]]; then
-          VGN=$(echo $LVROOT |sed 's/-.*//')
-          LVROOT=$(echo $LVROOT |sed 's/.*-//')
-          RSIZE=$(autodetect size_show $LVROOT)
+    if [ $USELVM = "Yes" ]; then
+      if [[ -n $VGN ]]; then
+        if [[ $(lvs) ]]; then
+          autodetect vols >$PARTS
+          LVROOT=$(display radio "SELECT ROOT VOLUME")
+          if [[ -n $LVROOT ]]; then
+            VGN=$(echo $LVROOT |sed 's/-.*//')
+            LVROOT=$(echo $LVROOT |sed 's/.*-//')
+            RSIZE=$(autodetect size_show $LVROOT)
+          else
+            RSIZE=""
+            LVROOT=$(display input "ROOT VOLUME NAME" "$LVROOT")
+            [[ -n $LVROOT ]] && RSIZE=$(display input "ROOT VOLUME SIZE" "$RSIZE")
+          fi
+          [[ -n $LVROOT ]] && RPOINT=$(display input "ROOT MOUNT POINT" "$RPOINT")
         else
-          RSIZE=""
           LVROOT=$(display input "ROOT VOLUME NAME" "$LVROOT")
           [[ -n $LVROOT ]] && RSIZE=$(display input "ROOT VOLUME SIZE" "$RSIZE")
         fi
-        [[ -n $LVROOT ]] && RPOINT=$(display input "ROOT MOUNT POINT" "$RPOINT")
       else
-        LVROOT=$(display input "ROOT VOLUME NAME" "$LVROOT")
-        [[ -n $LVROOT ]] && RSIZE=$(display input "ROOT VOLUME SIZE" "$RSIZE")
+        display error "MUST SET LVM GROUP FIRST!"
       fi
     else
-      display error "MUST SET LVM GROUP FIRST!"
+      RDISP=$(display radio "SELECT ROOT PARTITION")
+      RSIZE=$(autodetect size_show $RDISP)
     fi
     ;;
     " [*] Pass")
@@ -321,30 +338,35 @@ while [[ $g = 0 ]]; do
       done
       HPOINT="$RPOINT/home"
     else
-      PASS1FLAG=""; LVHOME=""; HSIZE=""; HPOINT=""
+      PASS1FLAG=""; HDISP=""; LVHOME=""; HSIZE=""; HPOINT=""
     fi
     ;;
     " [ ] Home")
     if [[ -n $USR1 ]]; then
-     if [[ $(lvs) ]]; then
-      autodetect vols >$PARTS && LVHOME=$(display radio "SELECT HOME VOLUME")
-      if [[ -n $LVHOME ]]; then      
-        VGN=$(echo $LVHOME |sed 's/-.*//')
-        LVHOME=$(echo $LVHOME |sed 's/.*-//')
-        HSIZE=$(autodetect size_show $LVHOME)
+     if [ $USELVM = "Yes" ]; then
+      if [[ $(lvs) ]]; then
+       autodetect vols >$PARTS && LVHOME=$(display radio "SELECT HOME VOLUME")
+       if [[ -n $LVHOME ]]; then      
+         VGN=$(echo $LVHOME |sed 's/-.*//')
+         LVHOME=$(echo $LVHOME |sed 's/.*-//')
+         HSIZE=$(autodetect size_show $LVHOME)
+       else
+         HSIZE=""
+         LVHOME=$(display input "HOME VOLUME NAME" "$LVHOME")
+         [[ -n $LVHOME ]] && HSIZE=$(display input "HOME VOLUME SIZE" "$HSIZE")
+       fi
       else
-        HSIZE=""
-        LVHOME=$(display input "HOME VOLUME NAME" "$LVHOME")
-        [[ -n $LVHOME ]] && HSIZE=$(display input "HOME VOLUME SIZE" "$HSIZE")
+       LVHOME=$(display input "HOME VOLUME NAME" "$LVHOME")
+       [[ -n $LVHOME ]] && HSIZE=$(display input "HOME VOLUME SIZE" "$HSIZE")
       fi
+       [[ -n $LVHOME ]] && HPOINT=$(display input "HOME MOUNT POINT" "$HPOINT")
      else
-      LVHOME=$(display input "HOME VOLUME NAME" "$LVHOME")
-      [[ -n $LVHOME ]] && HSIZE=$(display input "HOME VOLUME SIZE" "$HSIZE")
+      HDISP=$(display radio "SELECT HOME PARTITION")
+      HSIZE=$(autodetect size_show $HDISP)
      fi
-      [[ -n $LVHOME ]] && HPOINT=$(display input "HOME MOUNT POINT" "$HPOINT")
     else
      display error "Please set user first"
-    fi 
+    fi
     ;;
     " [ ] Host")
     HOST=$(display input "ENTER HOSTNAME" "$HOST")
@@ -405,21 +427,26 @@ SEARCH="pacman -Ss --color always"
 
 clear
 
-clockfor="[*] Start LVM and Format... "
+clockfor="[*] Start Format and LVM if necesary... "
 reverse_clock
-
-# Create volume group if necesary
-[[ ! $(autodetect dev $VGN) ]] && text g "\n[+] Creating Lvm Group: $VGN\n" && vgcreate $VGN /dev/$PV
-# Create root volume if necesary
-[[ ! $(autodetect dev "$VGN-$LVROOT") ]]  && text g "\n[+] Creating Lvm volume: $VGN-$LVROOT\n" && lvcreate -L $RSIZE $VGN -n $LVROOT
-
-# Check and umount before format
-if cat /proc/mounts | grep -w "$VGN-$LVROOT" &>/dev/null; then
-  umount -R $RPOINT
+if [ $USELVM = "Yes" ]; then
+ # Create volume group if necesary
+ [[ ! $(autodetect dev $VGN) ]] && text g "\n[+] Creating Lvm Group: $VGN\n" && vgcreate $VGN /dev/$PV
+ # Create root volume if necesary
+ [[ ! $(autodetect dev "$VGN-$LVROOT") ]]  && text g "\n[+] Creating Lvm volume: $VGN-$LVROOT\n" && lvcreate -L $RSIZE $VGN -n $LVROOT
+ # Check and umount before format
+ if cat /proc/mounts | grep -w "$VGN-$LVROOT" &>/dev/null; then
+   umount -R $RPOINT
+ fi
+ # Format Root Volume
+ text g "\n[+] Formating $VGN-$LVROOT\n"
+ mkfs.ext4 -F /dev/mapper/$VGN-$LVROOT
+else
+ # Format Root Partition
+ text g "\n[+] Formating root partition $RDISP\n"
+ mkfs.ext4 -F /dev/$RDISP
 fi
-# Format Root
-text g "\n[+] Formating $VGN-$LVROOT\n"
-mkfs.ext4 -F /dev/mapper/$VGN-$LVROOT
+
 # Format boot
 mkfs.ext4 -F /dev/$BDISP
 text g "\n[+] Formating Boot partition\n"
@@ -428,6 +455,7 @@ text g "\n[+] Formating Boot partition\n"
 [[ $EFIFLAG = "No" ]] && text y "\n[+] Skiping Efi partition format\n"
 # Create home volume if user account has being set
 if [[ -n $USR1 ]]; then
+ if [ $USELVM = "Yes" ]; then
   if [[ ! $(autodetect dev $VGN-$LVHOME) ]]; then
     text g "[+] Creating Lvm volume $VGN-$LVHOME\n"
     lvcreate -L $HSIZE $VGN -n $LVHOME
@@ -437,6 +465,9 @@ if [[ -n $USR1 ]]; then
     text g "\n[+] Formating detected volume $VGN-$LVHOME\n"
     mkfs.ext4 -F /dev/mapper/$VGN-$LVHOME
   fi
+ else
+  text g "\n[+] Formating home partition $HDISP\n"
+  mkfs.ext4 -F /dev/$HDISP
 fi
 
 #------------------[ CHECK DIRS AND MOUNT ]---------------------
@@ -445,16 +476,23 @@ clockfor="[*] Start partitions mounting... "
 reverse_clock
 
 autodetect makedirs "$RPOINT" "Root"
-autodetect mountvols "$VGN-$LVROOT" "$RPOINT" "Root"
+if [ $USELVM = "Yes" ]; then
+ autodetect mountvols "$VGN-$LVROOT" "$RPOINT" "Root"
+else
+ autodetect mountvols "$RDISP" "$RPOINT" "Root"
+fi
 autodetect makedirs "$BPOINT" "Boot"
 autodetect mountothers "$BDISP" "$BPOINT" "Boot"
 autodetect makedirs "$EPOINT" "Efi"
 autodetect mountothers "$EDISP" "$EPOINT" "Efi"
-
 # Check user and mount home
 if [[ -n $USR1 ]]; then
-  autodetect makedirs "$HPOINT" "home"
+ autodetect makedirs "$HPOINT" "home"
+ if [ $USELVM = "Yes" ]; then
   autodetect mountvols "$VGN-$LVHOME" "$HPOINT" "home"
+ else
+  autodetect mountvols "$HDISP" "$HPOINT" "home"
+ fi
 fi
 
 #------------------[ PACSTRAP AND FSTAB ]---------------------
@@ -552,8 +590,10 @@ $CHR "systemctl enable iptables"
 text g "\n[+] Installing Bootloader with fixed path\n"
 $CHR "$INSTALL refind"
 $CHR "refind-install"
-_BPOINT=$(echo "$BPOINT" | sed 's/[/]mnt//g')  
-$CHR "sed -i 's/archisobasedir=arch/ro root=\/dev\/mapper\/$VGN-$LVROOT/g' $_BPOINT/refind_linux.conf"
+if [ $USELVM = "Yes"]; then
+ _BPOINT=$(echo "$BPOINT" | sed 's/[/]mnt//g')  
+ $CHR "sed -i 's/archisobasedir=arch/ro root=\/dev\/mapper\/$VGN-$LVROOT/g' $_BPOINT/refind_linux.conf"
+fi
 
 clockfor="[!] Installing community packages selected... "
 reverse_clock
