@@ -569,6 +569,7 @@ if [ $TYPEFLAG = "Native" ]; then
   $CHR "$INSTALL $DVRNATIVE"
   text g "\n[+] Enable Bluetooth service\n"
   $CHR "systemctl enable bluetooth"
+  $CHR "systemctl enable bumblebeed"
 fi
 
 text g "\n[+] Installing Enviroment packages\n"
